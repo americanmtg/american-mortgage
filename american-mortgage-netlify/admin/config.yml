@@ -1,0 +1,189 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "images"
+public_folder: "/images"
+
+collections:
+  - name: "settings"
+    label: "Site Settings"
+    files:
+      - name: "general"
+        label: "General Settings"
+        file: "_data/settings.json"
+        fields:
+          - { name: "siteName", label: "Site Name", widget: "string", default: "American Mortgage" }
+          - { name: "phone", label: "Phone Number", widget: "string" }
+          - { name: "email", label: "Email", widget: "string" }
+          - { name: "address", label: "Address", widget: "string" }
+          - { name: "legalBanner", label: "Legal Banner Text", widget: "text" }
+
+  - name: "navigation"
+    label: "Navigation"
+    files:
+      - name: "nav"
+        label: "Main Navigation"
+        file: "_data/navigation.json"
+        fields:
+          - name: "items"
+            label: "Menu Items"
+            widget: "list"
+            fields:
+              - { name: "label", label: "Label", widget: "string" }
+              - { name: "url", label: "URL", widget: "string" }
+
+  - name: "homepage"
+    label: "Homepage Sections"
+    files:
+      - name: "hero"
+        label: "Hero Section"
+        file: "_data/hero.json"
+        fields:
+          - { name: "badge", label: "Badge Text", widget: "string" }
+          - { name: "title", label: "Title Line 1", widget: "string" }
+          - { name: "titleEmphasis", label: "Title Emphasis (italic)", widget: "string" }
+          - { name: "buttonText", label: "Button Text", widget: "string" }
+          - { name: "buttonUrl", label: "Button URL", widget: "string" }
+          - { name: "subtext", label: "Subtext", widget: "string" }
+          - { name: "ratingPercent", label: "Rating Percent", widget: "string" }
+          - { name: "ratingText", label: "Rating Text", widget: "string" }
+          - name: "avatars"
+            label: "Customer Avatars"
+            widget: "list"
+            field: { name: "image", label: "Image", widget: "image" }
+
+      - name: "stats"
+        label: "Stats Bar"
+        file: "_data/stats.json"
+        fields:
+          - name: "items"
+            label: "Statistics"
+            widget: "list"
+            fields:
+              - { name: "number", label: "Number", widget: "string" }
+              - { name: "label", label: "Label", widget: "string" }
+
+      - name: "featuredLoans"
+        label: "Featured Loans"
+        file: "_data/featured-loans.json"
+        fields:
+          - { name: "badge", label: "Section Badge", widget: "string" }
+          - { name: "title", label: "Section Title", widget: "string" }
+          - { name: "titleEmphasis", label: "Title Emphasis", widget: "string" }
+          - name: "loans"
+            label: "Loan Cards"
+            widget: "list"
+            fields:
+              - { name: "title", label: "Title", widget: "string" }
+              - { name: "description", label: "Description", widget: "text" }
+              - { name: "image", label: "Image", widget: "image" }
+              - { name: "showDPA", label: "Show DPA Badge", widget: "boolean", default: false }
+              - { name: "buttonText", label: "Button Text", widget: "string" }
+              - name: "features"
+                label: "Features"
+                widget: "list"
+                field: { name: "feature", label: "Feature", widget: "string" }
+
+      - name: "dpa"
+        label: "DPA Section"
+        file: "_data/dpa.json"
+        fields:
+          - { name: "title", label: "Title", widget: "string" }
+          - { name: "titleEmphasis", label: "Title Emphasis", widget: "string" }
+          - { name: "buttonText", label: "Button Text", widget: "string" }
+          - { name: "buttonSubtext", label: "Button Subtext", widget: "string" }
+          - name: "features"
+            label: "Features"
+            widget: "list"
+            field: { name: "feature", label: "Feature", widget: "string" }
+
+      - name: "tools"
+        label: "Tools Section"
+        file: "_data/tools.json"
+        fields:
+          - { name: "badge", label: "Section Badge", widget: "string" }
+          - { name: "title", label: "Section Title", widget: "string" }
+          - { name: "titleEmphasis", label: "Title Emphasis", widget: "string" }
+          - name: "items"
+            label: "Tool Cards"
+            widget: "list"
+            fields:
+              - { name: "title", label: "Title", widget: "string" }
+              - { name: "description", label: "Description", widget: "string" }
+              - { name: "url", label: "URL", widget: "string" }
+
+      - name: "agent"
+        label: "Agent Section"
+        file: "_data/agent.json"
+        fields:
+          - { name: "title", label: "Title", widget: "string" }
+          - { name: "description", label: "Description", widget: "text" }
+          - { name: "buttonText", label: "Button Text", widget: "string" }
+          - { name: "image", label: "Image", widget: "image" }
+
+      - name: "learningHub"
+        label: "Learning Hub Settings"
+        file: "_data/learning-hub.json"
+        fields:
+          - { name: "badge", label: "Section Badge", widget: "string" }
+          - { name: "title", label: "Section Title", widget: "string" }
+          - { name: "titleEmphasis", label: "Title Emphasis", widget: "string" }
+          - { name: "viewAllText", label: "View All Button Text", widget: "string" }
+
+      - name: "app"
+        label: "App Section"
+        file: "_data/app.json"
+        fields:
+          - { name: "title", label: "Title", widget: "string" }
+          - { name: "titleEmphasis", label: "Title Emphasis", widget: "string" }
+          - { name: "buttonText", label: "Button Text", widget: "string" }
+          - { name: "image", label: "Phone Mockup Image", widget: "image" }
+          - name: "features"
+            label: "Features"
+            widget: "list"
+            fields:
+              - { name: "title", label: "Title", widget: "string" }
+              - { name: "description", label: "Description", widget: "string" }
+
+      - name: "stickyCta"
+        label: "Sticky CTA Bar"
+        file: "_data/sticky-cta.json"
+        fields:
+          - { name: "text", label: "Text", widget: "string" }
+          - { name: "buttonText", label: "Button Text", widget: "string" }
+
+      - name: "footer"
+        label: "Footer"
+        file: "_data/footer.json"
+        fields:
+          - { name: "legalText", label: "Legal Text", widget: "text" }
+          - name: "columns"
+            label: "Footer Columns"
+            widget: "list"
+            fields:
+              - { name: "title", label: "Column Title", widget: "string" }
+              - name: "links"
+                label: "Links"
+                widget: "list"
+                fields:
+                  - { name: "label", label: "Label", widget: "string" }
+                  - { name: "url", label: "URL", widget: "string" }
+
+  - name: "blog"
+    label: "Blog Posts"
+    folder: "blog"
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - { name: "title", label: "Title", widget: "string" }
+      - { name: "date", label: "Date", widget: "datetime" }
+      - { name: "excerpt", label: "Excerpt", widget: "text" }
+      - { name: "image", label: "Featured Image", widget: "image" }
+      - { name: "readTime", label: "Read Time", widget: "string", default: "5 min read" }
+      - { name: "authorName", label: "Author Name", widget: "string" }
+      - { name: "authorTitle", label: "Author Title", widget: "string" }
+      - { name: "authorNmls", label: "Author NMLS (optional)", widget: "string", required: false }
+      - { name: "authorImage", label: "Author Photo", widget: "image" }
+      - { name: "published", label: "Published", widget: "boolean", default: true }
+      - { name: "body", label: "Content", widget: "markdown" }

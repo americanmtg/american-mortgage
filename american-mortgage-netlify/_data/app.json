@@ -1,0 +1,11 @@
+{
+  "title": "Take your mortgage on the go with the",
+  "titleEmphasis": "American Mortgage app",
+  "buttonText": "Download The App",
+  "image": "/images/phone-mock.png",
+  "features": [
+    { "title": "Faster, easier homebuying", "description": "Upload and sign documents right from your phone." },
+    { "title": "Never miss a beat", "description": "Keep track of tasks with your personal to-do list." },
+    { "title": "Security meets convenience", "description": "Safely review your loan information from anywhere." }
+  ]
+}

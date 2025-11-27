@@ -1,0 +1,32 @@
+[
+  {
+    "slug": "fha-loan-eligibility-2025",
+    "title": "2025 FHA Loan Eligibility",
+    "excerpt": "FHA loan qualifications are pretty flexible, but for the best chance at approval, you should aim for a credit score of 620+, a DTI ratio of 43% or lower.",
+    "image": "/images/fha-eligibility.jpg",
+    "readTime": "8 min read",
+    "authorName": "Shiloh Davis",
+    "authorTitle": "Loan Officer Development",
+    "authorImage": "/images/shiloh-davis.jpg"
+  },
+  {
+    "slug": "fha-vs-conventional-loans",
+    "title": "FHA vs. Conventional Loans: Which is Better?",
+    "excerpt": "Compare FHA and conventional loans to find the best fit for your budget, credit, and homeownership goals.",
+    "image": "/images/fhavsconv.jpg",
+    "readTime": "6 min read",
+    "authorName": "Crystal Shifflet",
+    "authorTitle": "Loan Coordinator",
+    "authorImage": "/images/crystal-shifflet.jpg"
+  },
+  {
+    "slug": "down-payment-assistance-programs",
+    "title": "Down Payment Assistance Programs for Your New Home",
+    "excerpt": "Explore down payment assistance programs that can make buying a home more affordable.",
+    "image": "/images/downpayment-assistance.jpg",
+    "readTime": "6 min read",
+    "authorName": "Tyler Oswald",
+    "authorTitle": "Production Training Team Lead",
+    "authorImage": "/images/tyler-oswald.jpg"
+  }
+]

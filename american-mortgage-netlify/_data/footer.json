@@ -1,0 +1,34 @@
+{
+  "legalText": "American Mortgage Independent Mortgage is a DBA of Mortgage Research Center, LLC. Copyright © 2025 Mortgage Research Center, LLC. All Rights Reserved. NMLS ID #1907",
+  "columns": [
+    {
+      "title": "Customer Resources",
+      "links": [
+        { "label": "Log In", "url": "/login" },
+        { "label": "Tools", "url": "/tools" },
+        { "label": "Learning Center", "url": "/blog" }
+      ]
+    },
+    {
+      "title": "Company",
+      "links": [
+        { "label": "About", "url": "/about" },
+        { "label": "Careers", "url": "/careers" }
+      ]
+    },
+    {
+      "title": "Support",
+      "links": [
+        { "label": "Help", "url": "/help" },
+        { "label": "Contact", "url": "/contact" }
+      ]
+    },
+    {
+      "title": "Legal",
+      "links": [
+        { "label": "Terms of Use", "url": "/terms" },
+        { "label": "Privacy Policy", "url": "/privacy" }
+      ]
+    }
+  ]
+}

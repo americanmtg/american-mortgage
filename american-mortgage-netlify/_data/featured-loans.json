@@ -1,0 +1,43 @@
+{
+  "badge": "Featured Loans",
+  "title": "From first home to refinance,",
+  "titleEmphasis": "we're here for you.",
+  "loans": [
+    {
+      "title": "Conventional Loans",
+      "description": "Own your next home with the most popular mortgage available.",
+      "image": "/images/first-res-conventional-photo.png",
+      "showDPA": true,
+      "buttonText": "Start Your Conventional Loan",
+      "features": [
+        "Flexible for rates & terms",
+        "Higher lending limits",
+        "Great for homebuyers and buyers with good credit"
+      ]
+    },
+    {
+      "title": "FHA Loans",
+      "description": "Close with lower upfront costs and easier approval.",
+      "image": "/images/first-res-FHA-photo.png",
+      "showDPA": true,
+      "buttonText": "Start Your FHA Loan",
+      "features": [
+        "Lower credit requirements",
+        "Put as little as 3.5% down",
+        "Relaxed debt-to-income requirements"
+      ]
+    },
+    {
+      "title": "Refinance",
+      "description": "Save more every month or unlock cash with your home value.",
+      "image": "/images/first-res-REFI-photo.png",
+      "showDPA": false,
+      "buttonText": "Start Your Refinance",
+      "features": [
+        "Lock in a lower rate",
+        "Use equity to unlock funds",
+        "Conventional and FHA refinancing available"
+      ]
+    }
+  ]
+}

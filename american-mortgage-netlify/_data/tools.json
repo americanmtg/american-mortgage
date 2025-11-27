@@ -1,0 +1,11 @@
+{
+  "badge": "Tools & Calculators",
+  "title": "Get an estimate instantly with our",
+  "titleEmphasis": "online mortgage tools",
+  "items": [
+    { "title": "Affordability Calculator", "description": "See how much home you can afford.", "url": "/tools/affordability" },
+    { "title": "Mortgage Calculator", "description": "Calculate your monthly mortgage payment.", "url": "/tools/mortgage" },
+    { "title": "FHA Loan Calculator", "description": "Estimate your payment with an FHA loan.", "url": "/tools/fha" },
+    { "title": "FHA Loan Limits", "description": "Find FHA Loan Limits in your area.", "url": "/tools/limits" }
+  ]
+}

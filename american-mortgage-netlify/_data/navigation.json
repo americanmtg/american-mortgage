@@ -1,0 +1,7 @@
+{
+  "items": [
+    { "label": "About", "url": "/about" },
+    { "label": "Reviews", "url": "/reviews" },
+    { "label": "Learn", "url": "/blog" }
+  ]
+}

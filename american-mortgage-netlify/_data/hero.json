@@ -1,0 +1,15 @@
+{
+  "badge": "Trusted Nationwide",
+  "title": "Get home with the",
+  "titleEmphasis": "first name in financing",
+  "buttonText": "Get Started Now",
+  "buttonUrl": "/start",
+  "subtext": "3 min • No negative credit impact",
+  "ratingPercent": "98%",
+  "ratingText": "would recommend",
+  "avatars": [
+    "/images/refi-proof-homeowner-01.jpg",
+    "/images/refi-proof-homeowner-02.jpg",
+    "/images/refi-proof-homeowner-03.jpg"
+  ]
+}
