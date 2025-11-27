@@ -1,0 +1,10 @@
+{
+  "buttonText": "Test 123",
+  "ratingPercent": "99",
+  "subtext": "Test subtext",
+  "buttonUrl": "www.google.com",
+  "titleEmphasis": "Title emphasis italic",
+  "title": "title line 1",
+  "badge": "badge text",
+  "ratingText": "rating text"
+}
