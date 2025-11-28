@@ -129,37 +129,252 @@
 </div>
 </div>
 <script>
-const GitHubAPI={token:null,repo:'americanmtg/american-mortgage',branch:'main',basePath:'american-mortgage-netlify',
-async init(){const user=netlifyIdentity.currentUser();if(user){this.token=await user.jwt();return true}return false},
-async request(endpoint,options={}){const r=await fetch(`/.netlify/git/github${endpoint}`,{...options,headers:{'Authorization':`Bearer ${this.token}`,'Content-Type':'application/json',...options.headers}});if(!r.ok)throw new Error(`GitHub API error: ${r.status}`);return r.json()},
-async getFile(path){try{const fullPath=`${this.basePath}/${path}`;const data=await this.request(`/contents/${fullPath}?ref=${this.branch}`);return{content:atob(data.content),sha:data.sha}}catch(e){return null}},
-async saveFile(path,content,message='Update via admin'){const fullPath=`${this.basePath}/${path}`;let sha=null;try{const existing=await this.request(`/contents/${fullPath}?ref=${this.branch}`);sha=existing.sha}catch(e){}const body={message,content:btoa(unescape(encodeURIComponent(content))),branch:this.branch};if(sha)body.sha=sha;return this.request(`/contents/${fullPath}`,{method:'PUT',body:JSON.stringify(body)})}};
+// GitHub API with auto token refresh and retry
+const GitHubAPI={
+  token:null,
+  repo:'americanmtg/american-mortgage',
+  branch:'main',
+  basePath:'american-mortgage-netlify',
+  
+  async refreshToken(){
+    const user=netlifyIdentity.currentUser();
+    if(user){
+      this.token=await user.jwt(true); // force refresh
+      return true;
+    }
+    return false;
+  },
+  
+  async init(){
+    return this.refreshToken();
+  },
+  
+  async request(endpoint,options={},retryCount=0){
+    // Always get fresh token before request
+    await this.refreshToken();
+    
+    try{
+      const r=await fetch(`/.netlify/git/github${endpoint}`,{
+        ...options,
+        headers:{
+          'Authorization':`Bearer ${this.token}`,
+          'Content-Type':'application/json',
+          ...options.headers
+        }
+      });
+      
+      if(r.status===401 && retryCount<2){
+        // Token expired, refresh and retry
+        console.log('Token expired, refreshing...');
+        await this.refreshToken();
+        return this.request(endpoint,options,retryCount+1);
+      }
+      
+      if(!r.ok){
+        const errText=await r.text();
+        throw new Error(`GitHub API error ${r.status}: ${errText}`);
+      }
+      
+      return r.json();
+    }catch(err){
+      if(retryCount<2){
+        // Wait a bit and retry on network errors
+        console.log(`Retry ${retryCount+1} after error:`,err.message);
+        await new Promise(resolve=>setTimeout(resolve,1000));
+        return this.request(endpoint,options,retryCount+1);
+      }
+      throw err;
+    }
+  },
+  
+  async getFile(path){
+    try{
+      const fullPath=`${this.basePath}/${path}`;
+      const data=await this.request(`/contents/${fullPath}?ref=${this.branch}`);
+      return{content:atob(data.content),sha:data.sha};
+    }catch(e){
+      console.error('getFile error:',e);
+      return null;
+    }
+  },
+  
+  async saveFile(path,content,message='Update via admin'){
+    const fullPath=`${this.basePath}/${path}`;
+    let sha=null;
+    
+    try{
+      const existing=await this.request(`/contents/${fullPath}?ref=${this.branch}`);
+      sha=existing.sha;
+    }catch(e){
+      // File doesn't exist yet, that's ok
+    }
+    
+    const body={
+      message,
+      content:btoa(unescape(encodeURIComponent(content))),
+      branch:this.branch
+    };
+    if(sha)body.sha=sha;
+    
+    return this.request(`/contents/${fullPath}`,{
+      method:'PUT',
+      body:JSON.stringify(body)
+    });
+  }
+};
 
-const DataStore={data:{},modified:new Set(),
-async load(file){if(this.data[file])return this.data[file];const result=await GitHubAPI.getFile(`_data/${file}.json`);if(result){this.data[file]=JSON.parse(result.content);return this.data[file]}return null},
-async loadAll(){const files=['settings','navigation','hero','stats','featured-loans','dpa','tools','agent','learning-hub','app','sticky-cta','footer','blogs'];await Promise.all(files.map(f=>this.load(f)));return this.data},
-update(file,data){this.data[file]=data;this.modified.add(file)},
-async save(file){if(!this.data[file])return;const content=JSON.stringify(this.data[file],null,2);await GitHubAPI.saveFile(`_data/${file}.json`,content,`Update ${file}`);this.modified.delete(file)},
-async saveAll(){await Promise.all(Array.from(this.modified).map(f=>this.save(f)));this.modified.clear()}};
+const DataStore={
+  data:{},
+  modified:new Set(),
+  
+  async load(file){
+    if(this.data[file])return this.data[file];
+    const result=await GitHubAPI.getFile(`_data/${file}.json`);
+    if(result){
+      this.data[file]=JSON.parse(result.content);
+      return this.data[file];
+    }
+    return null;
+  },
+  
+  async loadAll(){
+    const files=['settings','navigation','hero','stats','featured-loans','dpa','tools','agent','learning-hub','app','sticky-cta','footer','blogs'];
+    await Promise.all(files.map(f=>this.load(f)));
+    return this.data;
+  },
+  
+  update(file,data){
+    this.data[file]=data;
+    this.modified.add(file);
+  },
+  
+  async save(file){
+    if(!this.data[file])return;
+    const content=JSON.stringify(this.data[file],null,2);
+    await GitHubAPI.saveFile(`_data/${file}.json`,content,`Update ${file}`);
+    this.modified.delete(file);
+  },
+  
+  async saveAll(){
+    // Save files one at a time to avoid rate limits
+    for(const file of Array.from(this.modified)){
+      await this.save(file);
+      // Small delay between saves
+      await new Promise(r=>setTimeout(r,300));
+    }
+    this.modified.clear();
+  }
+};
 
-const BlogStore={posts:[],async loadAll(){try{const data=await DataStore.load('blogs');this.posts=data||[];return this.posts}catch(e){this.posts=[];return[]}},add(p){this.posts.push(p)},update(i,p){this.posts[i]=p},delete(i){this.posts.splice(i,1)}};
+const BlogStore={
+  posts:[],
+  async loadAll(){
+    try{
+      const data=await DataStore.load('blogs');
+      this.posts=data||[];
+      return this.posts;
+    }catch(e){
+      this.posts=[];
+      return[];
+    }
+  },
+  add(p){this.posts.push(p)},
+  update(i,p){this.posts[i]=p},
+  delete(i){this.posts.splice(i,1)}
+};
 
 let currentPage='dashboard';
-document.addEventListener('DOMContentLoaded',()=>{netlifyIdentity.init();const user=netlifyIdentity.currentUser();if(user){initApp(user)}else{netlifyIdentity.open('login');netlifyIdentity.on('login',user=>{netlifyIdentity.close();initApp(user)})}});
 
-async function initApp(user){document.getElementById('user-email').textContent=user.email;document.getElementById('user-avatar').textContent=user.email[0].toUpperCase();await GitHubAPI.init();await DataStore.loadAll();await BlogStore.loadAll();setupNav();renderPage('dashboard')}
+document.addEventListener('DOMContentLoaded',()=>{
+  netlifyIdentity.init();
+  const user=netlifyIdentity.currentUser();
+  if(user){
+    initApp(user);
+  }else{
+    netlifyIdentity.open('login');
+    netlifyIdentity.on('login',user=>{
+      netlifyIdentity.close();
+      initApp(user);
+    });
+  }
+});
 
-function setupNav(){document.querySelectorAll('.nav-item').forEach(item=>{item.onclick=e=>{e.preventDefault();navigateTo(item.dataset.page)}});document.getElementById('btn-save').onclick=saveChanges}
+async function initApp(user){
+  document.getElementById('user-email').textContent=user.email;
+  document.getElementById('user-avatar').textContent=user.email[0].toUpperCase();
+  await GitHubAPI.init();
+  await DataStore.loadAll();
+  await BlogStore.loadAll();
+  setupNav();
+  renderPage('dashboard');
+}
 
-function navigateTo(page){document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.querySelector(`[data-page="${page}"]`)?.classList.add('active');renderPage(page)}
+function setupNav(){
+  document.querySelectorAll('.nav-item').forEach(item=>{
+    item.onclick=e=>{
+      e.preventDefault();
+      navigateTo(item.dataset.page);
+    };
+  });
+  document.getElementById('btn-save').onclick=saveChanges;
+}
 
-function renderPage(page){currentPage=page;const titles={dashboard:'Dashboard',settings:'Site Settings',hero:'Hero Section',stats:'Stats Bar',loans:'Featured Loans',dpa:'Down Payment Assistance',tools:'Tools & Calculators',agent:'Agent Section',app:'App Section',footer:'Footer',blog:'Blog Posts',navigation:'Navigation'};document.getElementById('page-title').textContent=titles[page]||page;document.getElementById('btn-save').style.display=page==='dashboard'?'none':'flex';if(Pages[page])document.getElementById('page-content').innerHTML=Pages[page]()}
+function navigateTo(page){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  renderPage(page);
+}
 
-function showToast(msg,type='success'){const t=document.getElementById('toast');t.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${type==='success'?'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>':'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}</svg>${msg}`;t.className=`toast ${type} show`;setTimeout(()=>t.classList.remove('show'),3000)}
+function renderPage(page){
+  currentPage=page;
+  const titles={
+    dashboard:'Dashboard',
+    settings:'Site Settings',
+    hero:'Hero Section',
+    stats:'Stats Bar',
+    loans:'Featured Loans',
+    dpa:'Down Payment Assistance',
+    tools:'Tools & Calculators',
+    agent:'Agent Section',
+    app:'App Section',
+    footer:'Footer',
+    blog:'Blog Posts',
+    navigation:'Navigation'
+  };
+  document.getElementById('page-title').textContent=titles[page]||page;
+  document.getElementById('btn-save').style.display=page==='dashboard'?'none':'flex';
+  if(Pages[page])document.getElementById('page-content').innerHTML=Pages[page]();
+}
 
-async function saveChanges(){const btn=document.getElementById('btn-save');btn.disabled=true;btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div> Saving...';try{await DataStore.saveAll();showToast('Changes saved!')}catch(e){console.error(e);showToast('Error saving','error')}btn.disabled=false;btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Changes'}
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${type==='success'?'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>':'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}</svg>${msg}`;
+  t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
 
-function updateField(store,field,value){if(!DataStore.data[store])DataStore.data[store]={};DataStore.data[store][field]=value;DataStore.modified.add(store)}
+async function saveChanges(){
+  const btn=document.getElementById('btn-save');
+  btn.disabled=true;
+  btn.innerHTML='<div class="spinner" style="width:18px;height:18px;border-width:2px;"></div> Saving...';
+  
+  try{
+    await DataStore.saveAll();
+    showToast('Changes saved!');
+  }catch(e){
+    console.error('Save error:',e);
+    showToast('Error saving: '+e.message,'error');
+  }
+  
+  btn.disabled=false;
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Changes';
+}
+
+function updateField(store,field,value){
+  if(!DataStore.data[store])DataStore.data[store]={};
+  DataStore.data[store][field]=value;
+  DataStore.modified.add(store);
+}
 function updateStatItem(i,f,v){DataStore.data.stats.items[i][f]=v;DataStore.modified.add('stats')}
 function addStat(){if(!DataStore.data.stats)DataStore.data.stats={items:[]};DataStore.data.stats.items.push({number:'',label:''});DataStore.modified.add('stats');renderPage('stats')}
 function deleteStat(i){DataStore.data.stats.items.splice(i,1);DataStore.modified.add('stats');renderPage('stats')}
@@ -182,17 +397,51 @@ function updateNavItem(i,f,v){DataStore.data.navigation.items[i][f]=v;DataStore.
 function addNavItem(){if(!DataStore.data.navigation.items)DataStore.data.navigation.items=[];DataStore.data.navigation.items.push({label:'',url:''});DataStore.modified.add('navigation');renderPage('navigation')}
 function deleteNavItem(i){DataStore.data.navigation.items.splice(i,1);DataStore.modified.add('navigation');renderPage('navigation')}
 
-function openBlogEditor(i=null){const isNew=i===null;const p=isNew?{title:'',excerpt:'',image:'',readTime:'5 min read',authorName:'',authorTitle:'',authorImage:'',slug:''}:BlogStore.posts[i];document.getElementById('modal-title').textContent=isNew?'New Blog Post':'Edit Blog Post';document.getElementById('modal-body').innerHTML=`<div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="blog-title" value="${p.title}"></div><div class="form-group"><label class="form-label">Slug</label><input type="text" class="form-input" id="blog-slug" value="${p.slug||''}" placeholder="auto-generated"></div><div class="form-group"><label class="form-label">Excerpt</label><textarea class="form-textarea" id="blog-excerpt">${p.excerpt}</textarea></div><div class="form-row"><div class="form-group"><label class="form-label">Featured Image</label><input type="text" class="form-input" id="blog-image" value="${p.image}" placeholder="/images/..."></div><div class="form-group"><label class="form-label">Read Time</label><input type="text" class="form-input" id="blog-readtime" value="${p.readTime}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Author Name</label><input type="text" class="form-input" id="blog-author" value="${p.authorName}"></div><div class="form-group"><label class="form-label">Author Title</label><input type="text" class="form-input" id="blog-authortitle" value="${p.authorTitle}"></div></div><div class="form-group"><label class="form-label">Author Image</label><input type="text" class="form-input" id="blog-authorimage" value="${p.authorImage}" placeholder="/images/..."></div>`;document.getElementById('modal-footer').innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBlogPost(${i})">Save Post</button>`;openModal()}
+function openBlogEditor(i=null){
+  const isNew=i===null;
+  const p=isNew?{title:'',excerpt:'',image:'',readTime:'5 min read',authorName:'',authorTitle:'',authorImage:'',slug:''}:BlogStore.posts[i];
+  document.getElementById('modal-title').textContent=isNew?'New Blog Post':'Edit Blog Post';
+  document.getElementById('modal-body').innerHTML=`<div class="form-group"><label class="form-label">Title</label><input type="text" class="form-input" id="blog-title" value="${esc(p.title)}"></div><div class="form-group"><label class="form-label">Slug</label><input type="text" class="form-input" id="blog-slug" value="${esc(p.slug||'')}" placeholder="auto-generated"></div><div class="form-group"><label class="form-label">Excerpt</label><textarea class="form-textarea" id="blog-excerpt">${esc(p.excerpt)}</textarea></div><div class="form-row"><div class="form-group"><label class="form-label">Featured Image</label><input type="text" class="form-input" id="blog-image" value="${esc(p.image)}" placeholder="/images/..."></div><div class="form-group"><label class="form-label">Read Time</label><input type="text" class="form-input" id="blog-readtime" value="${esc(p.readTime)}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Author Name</label><input type="text" class="form-input" id="blog-author" value="${esc(p.authorName)}"></div><div class="form-group"><label class="form-label">Author Title</label><input type="text" class="form-input" id="blog-authortitle" value="${esc(p.authorTitle)}"></div></div><div class="form-group"><label class="form-label">Author Image</label><input type="text" class="form-input" id="blog-authorimage" value="${esc(p.authorImage)}" placeholder="/images/..."></div>`;
+  document.getElementById('modal-footer').innerHTML=`<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBlogPost(${i})">Save Post</button>`;
+  openModal();
+}
 
-function saveBlogPost(i){const p={title:document.getElementById('blog-title').value,slug:document.getElementById('blog-slug').value||document.getElementById('blog-title').value.toLowerCase().replace(/[^a-z0-9]+/g,'-'),excerpt:document.getElementById('blog-excerpt').value,image:document.getElementById('blog-image').value,readTime:document.getElementById('blog-readtime').value,authorName:document.getElementById('blog-author').value,authorTitle:document.getElementById('blog-authortitle').value,authorImage:document.getElementById('blog-authorimage').value};if(i===null)BlogStore.add(p);else BlogStore.update(i,p);DataStore.data.blogs=BlogStore.posts;DataStore.modified.add('blogs');closeModal();renderPage('blog');showToast('Blog saved. Click Save Changes to publish.')}
+function saveBlogPost(i){
+  const p={
+    title:document.getElementById('blog-title').value,
+    slug:document.getElementById('blog-slug').value||document.getElementById('blog-title').value.toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    excerpt:document.getElementById('blog-excerpt').value,
+    image:document.getElementById('blog-image').value,
+    readTime:document.getElementById('blog-readtime').value,
+    authorName:document.getElementById('blog-author').value,
+    authorTitle:document.getElementById('blog-authortitle').value,
+    authorImage:document.getElementById('blog-authorimage').value
+  };
+  if(i===null)BlogStore.add(p);
+  else BlogStore.update(i,p);
+  DataStore.data.blogs=BlogStore.posts;
+  DataStore.modified.add('blogs');
+  closeModal();
+  renderPage('blog');
+  showToast('Blog saved. Click Save Changes to publish.');
+}
 
-function deleteBlogPost(i){if(confirm('Delete this post?')){BlogStore.delete(i);DataStore.data.blogs=BlogStore.posts;DataStore.modified.add('blogs');renderPage('blog');showToast('Deleted. Click Save Changes to confirm.')}}
+function deleteBlogPost(i){
+  if(confirm('Delete this post?')){
+    BlogStore.delete(i);
+    DataStore.data.blogs=BlogStore.posts;
+    DataStore.modified.add('blogs');
+    renderPage('blog');
+    showToast('Deleted. Click Save Changes to confirm.');
+  }
+}
 
 function openModal(){document.getElementById('modal-overlay').classList.add('show')}
 function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
 document.getElementById('modal-overlay').onclick=e=>{if(e.target.id==='modal-overlay')closeModal()};
 
 const esc=s=>s?String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';
+
 const Pages={
 dashboard(){const d=DataStore.data,bc=BlogStore.posts?.length||0,nc=d.navigation?.items?.length||0,lc=d['featured-loans']?.loans?.length||0,tc=d.tools?.items?.length||0;return`<div class="stats-grid"><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Blog Posts</span><div class="stat-card-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg></div></div><div class="stat-card-value">${bc}</div></div><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Nav Items</span><div class="stat-card-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div></div><div class="stat-card-value">${nc}</div></div><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Loan Types</span><div class="stat-card-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div></div><div class="stat-card-value">${lc}</div></div><div class="stat-card"><div class="stat-card-header"><span class="stat-card-title">Tools</span><div class="stat-card-icon navy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div></div><div class="stat-card-value">${tc}</div></div></div><div class="card"><div class="card-header"><h3 class="card-title">Quick Actions</h3></div><div class="card-body"><div class="quick-links"><a class="quick-link" onclick="navigateTo('settings')"><div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></div><span class="quick-link-text">Site Settings</span></a><a class="quick-link" onclick="navigateTo('hero')"><div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/></svg></div><span class="quick-link-text">Edit Hero</span></a><a class="quick-link" onclick="navigateTo('blog')"><div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/></svg></div><span class="quick-link-text">Manage Blog</span></a><a class="quick-link" onclick="navigateTo('loans')"><div class="quick-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div><span class="quick-link-text">Edit Loans</span></a></div></div></div>`},
 settings(){const d=DataStore.data.settings||{};return`<div class="card"><div class="card-header"><h3 class="card-title">General Settings</h3></div><div class="card-body"><div class="form-row"><div class="form-group"><label class="form-label">Site Name</label><input type="text" class="form-input" value="${esc(d.siteName)}" onchange="updateField('settings','siteName',this.value)"></div><div class="form-group"><label class="form-label">Phone Number</label><input type="text" class="form-input" value="${esc(d.phone)}" onchange="updateField('settings','phone',this.value)"></div></div><div class="form-row"><div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" value="${esc(d.email)}" onchange="updateField('settings','email',this.value)"></div><div class="form-group"><label class="form-label">Address</label><input type="text" class="form-input" value="${esc(d.address)}" onchange="updateField('settings','address',this.value)"></div></div><div class="form-group"><label class="form-label">Legal Banner</label><textarea class="form-textarea" onchange="updateField('settings','legalBanner',this.value)">${esc(d.legalBanner)}</textarea></div></div></div>`},
