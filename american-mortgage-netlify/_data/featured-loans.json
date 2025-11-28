@@ -31,7 +31,7 @@
       "title": "Refinance",
       "description": "Save more every month or unlock cash with your home value.",
       "image": "/images/first-res-REFI-photo.png",
-      "showDPA": false,
+      "showDPA": true,
       "buttonText": "Start Your Refinance",
       "features": [
         "Lock in a lower rate",
