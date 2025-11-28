@@ -1,7 +1,16 @@
 {
   "items": [
-    { "number": "98%", "label": "Would Recommend" },
-    { "number": "6,786", "label": "Total Reviews" },
-    { "number": "4.75/5", "label": "Average Satisfaction Rating" }
+    {
+      "number": "100%",
+      "label": "Would Recommend"
+    },
+    {
+      "number": "6,786",
+      "label": "Total Reviews"
+    },
+    {
+      "number": "4.75/5",
+      "label": "Average Satisfaction Rating"
+    }
   ]
 }
